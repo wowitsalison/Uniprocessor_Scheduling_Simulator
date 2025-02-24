@@ -1,14 +1,16 @@
 import System.IO (readFile)
 import Data.List (words)
+import Data.Char (chr)
 import Control.Monad (forM_, when)
 import Control.Concurrent (threadDelay)
 import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 -- Record to hold each input arrival time, priority, and cpu time
 data Input = Input
-    { arrival  :: Int,
+    { id       :: Char
+      arrival  :: Int,
       priority :: Int,
-      cpu_time :: Int
+      cpu_time :: Int,
     } deriving (Show)
 
 readyQueue :: [Int] 
@@ -18,7 +20,8 @@ readyQueue = []
 parseInput :: String -> Input
 parseInput line = 
     let [a, p, c] = map read (words line)
-    in Input a p c
+        idChar = chr (index + 65)
+    in Input idChar a p c
 
 -- Remove head from queue
 removeFirstInQueue :: [a] -> [a]
@@ -29,6 +32,10 @@ removeFirstInQueue (x:xs) = xs
 replaceInQueue :: [a] -> [a]
 replaceInQueue [] = []
 replaceInQueue (x:xs) = xs ++ [x]
+
+-- Find the input with the lowest priority in the ready queue
+findLowestPriority :: [Input] -> Input
+findLowestPriority queue = minimumBy (comparing priority) queue
 
 -- Check to see if the timer matches a value (arrival time)
 checkTimer :: Int -> Int -> Bool
@@ -50,13 +57,16 @@ scheduler startTime inputs readyQueue = do
         
         -- Check if the arrival time matches the timer's time
         if arrival x == seconds then do
-            -- Add to ready queue
+            -- Add to ready queue and remove from 
             let updatedReadyQueue = readyQueue ++ [x]
             let updatedInputs = xs
+            
+            -- Check priority in the ready queue
+            let lowestPriority = findLowestPriority readyQueue
+            -- Round robin if equal priority
+
             print seconds
             print updatedReadyQueue
-            -- Check priority in the ready queue
-            -- Round robin if equal priority
             scheduler startTime updatedInputs updatedReadyQueue
         else 
             print seconds
@@ -66,6 +76,6 @@ scheduler startTime inputs readyQueue = do
 main :: IO ()
 main = do
     contents <- readFile "input.txt" -- placeholder filename
-    let inputs = map parseInput (lines contents)
+    let inputs = zipWith parseInput [0..] (lines contents)
     startTimer
     forM_ inputs print
