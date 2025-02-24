@@ -6,9 +6,9 @@ import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 -- Record to hold each input arrival time, priority, and cpu time
 data Input = Input
-    { arrival  :: Int
-    , priority :: Int
-    , cpu_time :: Int
+    { arrival  :: Int,
+      priority :: Int,
+      cpu_time :: Int
     } deriving (Show)
 
 readyQueue :: [Int] 
@@ -41,19 +41,22 @@ startTimer = do
 
 scheduler :: [Input] -> [Input] -> Int -> IO ()
 scheduler startTime inputs readyQueue = do
-    if null readyQueue then
+    if null readyQueue && null inputs then
         putStrLn "END"
     else do
         currentTime <- getCurrentTime
         let seconds = floor (diffUTCTime currentTime startTime) :: Int
         let (x:xs) = inputs
         
-        let arrival = arrival x == seconds
-        if arrival then do
+        -- Check if the arrival time matches the timer's time
+        if arrival x == seconds then do
+            -- Add to ready queue
             let updatedReadyQueue = readyQueue ++ [x]
             let updatedInputs = xs
             print seconds
             print updatedReadyQueue
+            -- Check priority in the ready queue
+            -- Round robin if equal priority
             scheduler startTime updatedInputs updatedReadyQueue
         else 
             print seconds
