@@ -69,7 +69,7 @@ scheduler startTime inputs readyQueue = do
                 cpu_time lowestPriority = cpu_time lowestPriority - 1
             else do
                 -- Remove lowestPriority from readyQueue
-                
+
             -- Round robin if equal priority
 
             print updatedReadyQueue
@@ -83,5 +83,5 @@ main :: IO ()
 main = do
     contents <- readFile "input.txt" -- placeholder filename
     let inputs = zipWith parseInput [0..] (lines contents)
-    startTimer
-    forM_ inputs print
+    startTime = startTimer
+    scheduler startTime inputs readyQueue
