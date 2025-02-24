@@ -7,10 +7,10 @@ import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 -- Record to hold each input arrival time, priority, and cpu time
 data Input = Input
-    { id       :: Char
+    { id       :: Char,
       arrival  :: Int,
       priority :: Int,
-      cpu_time :: Int,
+      cpu_time :: Int
     } deriving (Show)
 
 readyQueue :: [Int] 
@@ -20,8 +20,8 @@ readyQueue = []
 parseInput :: String -> Input
 parseInput line = 
     let [a, p, c] = map read (words line)
-        idChar = chr (index + 65)
-    in Input idChar a p c
+        id = chr (index + 65)
+    in Input id a p c
 
 -- Remove head from queue
 removeFirstInQueue :: [a] -> [a]
@@ -63,9 +63,15 @@ scheduler startTime inputs readyQueue = do
             
             -- Check priority in the ready queue
             let lowestPriority = findLowestPriority readyQueue
+            if cpu_time > 0 then
+                print seconds
+                print id lowestPriority
+                cpu_time lowestPriority = cpu_time lowestPriority - 1
+            else do
+                -- Remove lowestPriority from readyQueue
+                
             -- Round robin if equal priority
 
-            print seconds
             print updatedReadyQueue
             scheduler startTime updatedInputs updatedReadyQueue
         else 
