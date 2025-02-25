@@ -25,7 +25,7 @@ findLowestPriority [] = Nothing
 findLowestPriority queue = Just (minimumBy (comparing priority) queue)
 
 -- Run one second of the scheduler
-scheduler :: UTCTime -> Int -> [Input] -> [Input] -> IO ()
+scheduler :: Int -> [Input] -> [Input] -> IO ()
 scheduler seconds inputs readyQueue = do
     -- Add to ready queue
     let (newArrivals, remainingInputs) = span (\p -> arrival p == seconds) inputs
