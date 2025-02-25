@@ -1,10 +1,9 @@
 import System.IO (readFile)
-import Data.List (words, minimumBy)
+import Data.List (minimumBy)
 import Data.Ord (comparing)
 import Data.Char (chr)
-import Control.Monad (forM_, when)
+import Control.Monad (when)
 import Control.Concurrent (threadDelay)
-import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
 
 -- Record to hold each process input
 data Input = Input
@@ -12,7 +11,7 @@ data Input = Input
       arrival  :: Int,
       priority :: Int,
       cpuTime  :: Int
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 -- Puts each string of arrival, priority, and cpu time into record
 parseInput :: Int -> String -> Input
@@ -26,12 +25,8 @@ findLowestPriority [] = Nothing
 findLowestPriority queue = Just (minimumBy (comparing priority) queue)
 
 -- Run one second of the scheduler
-scheduler :: UTCTime -> [Input] -> [Input] -> IO ()
-scheduler startTime inputs readyQueue = do
-    currentTime <- getCurrentTime
-    let seconds = floor (diffUTCTime currentTime startTime) :: Int
-    let (x:xs) = inputs
-    
+scheduler :: UTCTime -> Int -> [Input] -> [Input] -> IO ()
+scheduler seconds inputs readyQueue = do
     -- Add to ready queue
     let (newArrivals, remainingInputs) = span (\p -> arrival p == seconds) inputs
     let updatedQueue = readyQueue ++ newArrivals
@@ -39,38 +34,39 @@ scheduler startTime inputs readyQueue = do
     case findLowestPriority updatedQueue of
         Just process ->
             if cpuTime process > 0 then do
-                putStrLn $ show seconds ++ [charId process]
-                let updatedQueue = updateQueue process updatedQueue
+                putStrLn $ show seconds ++ "    " ++ [charId process]
+                let updatedQueue' = updateQueue process updatedQueue
                 threadDelay 1000000 -- Delay one second
-                scheduler startTime remainingInputs updatedQueue
-            else
-                scheduler startTime remainingInputs (removeFromQueue process updatedQueue)
+                scheduler (seconds + 1) remainingInputs updatedQueue'
+            else do
+                let cleanedQueue = removeFromQueue process updatedQueue
+                scheduler seconds remainingInputs cleanedQueue
         Nothing ->
             if null remainingInputs then putStrLn "END"
             else do
                 print seconds
                 threadDelay 1000000 -- Delay one second
-                scheduler startTime remainingInputs updatedQueue
+                scheduler (seconds + 1) remainingInputs updatedQueue
 
--- 
+-- Subtract 1 from cpuTime
 updateQueue :: Input -> [Input] -> [Input]
 updateQueue process queue =
     let updatedProcess = process { cpuTime = cpuTime process - 1}
     in replaceInQueue updatedProcess queue
 
--- 
+-- Remove process from ready queue
 removeFromQueue :: Input -> [Input] -> [Input]
 removeFromQueue process = filter (\p -> charId p /= charId process)
 
 replaceInQueue :: Input -> [Input] -> [Input]
-replaceInQueue process queue =
-    let withoutProcess = removeFromQueue process queue
-    in withoutProcess ++ [process]
+replaceInQueue process queue
+    | cpuTime process > 0 = withoutProcess ++ [process] -- Keep if still running
+    | otherwise = withoutProcess                        -- Remove if finished
+  where withoutProcess = removeFromQueue process queue
             
 main :: IO ()
 main = do
     contents <- readFile "input.txt" -- placeholder filename
     let inputs = zipWith parseInput [0..] (lines contents)
-    startTime <- getCurrentTime
     putStrLn "START"
-    scheduler startTime inputs []
+    scheduler 0 inputs []
