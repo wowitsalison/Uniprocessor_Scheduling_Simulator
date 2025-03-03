@@ -65,10 +65,16 @@ replaceInQueue process queue
     | otherwise = withoutProcess                        -- Remove if finished
   where withoutProcess = removeFromQueue process queue
             
+getQuanta :: IO Int
+getQuanta = readLn
+
 main :: IO ()
 main = do
+    putStrLn "Enter quanta for round robin: "
+    quanta <- getQuanta
     contents <- readFile "input.txt" -- placeholder filename
     let allLines = lines contents
     let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
+    print quanta
     putStrLn "START"
     scheduler 0 inputs []
