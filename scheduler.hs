@@ -26,8 +26,8 @@ findLowestPriority [] = Nothing
 findLowestPriority queue = Just (minimumBy (comparing priority) queue)
 
 -- Run one second of the scheduler
-scheduler :: Int -> [Input] -> [Input] -> IO ()
-scheduler seconds inputs readyQueue = do
+scheduler :: Int -> [Input] -> [Input] -> Int -> IO ()
+scheduler seconds inputs readyQueue quanta = do
     -- Add to ready queue
     let (newArrivals, remainingInputs) = span (\p -> arrival p == seconds) inputs
     let updatedQueue = readyQueue ++ newArrivals
@@ -38,16 +38,29 @@ scheduler seconds inputs readyQueue = do
                 putStrLn $ show seconds ++ "    " ++ [charId process]
                 let updatedQueue' = updateQueue process updatedQueue
                 threadDelay 1000000 -- Delay one second
-                scheduler (seconds + 1) remainingInputs updatedQueue'
+                scheduler (seconds + 1) remainingInputs updatedQueue' quanta
             else do
                 let cleanedQueue = removeFromQueue process updatedQueue
-                scheduler seconds remainingInputs cleanedQueue
+                scheduler seconds remainingInputs cleanedQueue quanta
         Nothing ->
             if null remainingInputs then putStrLn "END"
             else do
                 print seconds
                 threadDelay 1000000 -- Delay one second
-                scheduler (seconds + 1) remainingInputs updatedQueue
+                scheduler (seconds + 1) remainingInputs updatedQueue quanta
+
+roundRobin :: Int -> [Input] -> [Input] -> [Input] -> Int -> IO ()
+roundRobin seconds inputs [] otherProcesses quanta =
+    --return to main scheduler
+    scheduler seconds inputs otherProcesses quanta
+roundRobin seconds inputs (p:ps) otherProcesses quanta = do
+    let runTime = min (cpuTime p) quanta
+    mapM_ (\s -> putStrLn (show s ++ "  " ++ [charId p])) [seconds .. seconds + runTime - 1]
+    threadDelay (runTime * 1000000)
+    let updatedProcess = p { cpuTime = cpuTime p - runTime}
+    let nextProcesses = if cpuTime updatedProcess > 0 then ps ++ [updatedProcess] else ps
+
+    roundRobin (seconds + runTime) inputs nextProcesses otherProcesses quanta
 
 -- Subtract 1 from cpuTime
 updateQueue :: Input -> [Input] -> [Input]
@@ -77,4 +90,4 @@ main = do
     let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
     print quanta
     putStrLn "START"
-    scheduler 0 inputs []
+    scheduler 0 inputs [] quanta
