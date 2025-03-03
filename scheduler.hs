@@ -1,5 +1,5 @@
 import System.IO (readFile)
-import Data.List (minimumBy)
+import Data.List (minimumBy, partition)
 import Data.Ord (comparing)
 import Data.Char (chr)
 import Control.Monad (when)
@@ -33,8 +33,21 @@ scheduler seconds inputs readyQueue quanta = do
     let updatedQueue = readyQueue ++ newArrivals
         
     case findLowestPriority updatedQueue of
-        Just process ->
-            if cpuTime process > 0 then do
+        Just process -> 
+            let minPriorityValue = priority process
+                (samePriority, others) = partition (\p -> priority p == minPriorityValue) updatedQueue
+            in 
+            if length samePriority > 1 then 
+                let (current:rest) = samePriority
+                in if cpuTime current > 0 then do
+                    putStrLn $ show seconds ++ "    " ++ [charId current]
+                    let updatedQueue' = updateQueue current (others ++ rest)  -- Move to end of same-priority queue
+                    threadDelay 1000000 -- Delay one second
+                    scheduler (seconds + 1) remainingInputs updatedQueue' quanta
+                else do
+                    let cleanedQueue = removeFromQueue current (others ++ rest)
+                    scheduler seconds remainingInputs cleanedQueue quanta
+            else if cpuTime process > 0 then do
                 putStrLn $ show seconds ++ "    " ++ [charId process]
                 let updatedQueue' = updateQueue process updatedQueue
                 threadDelay 1000000 -- Delay one second
