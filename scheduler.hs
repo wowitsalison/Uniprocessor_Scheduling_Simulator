@@ -15,6 +15,7 @@ data Input = Input
 
 -- Puts each string of arrival, priority, and cpu time into record
 parseInput :: Int -> String -> Input
+parseInputs lines = zipWith parseInput [0..] (tail lines)
 parseInput index line = 
     let [a, p, c] = map read (words line)
     in Input (chr (index + 65)) a p c
@@ -67,6 +68,7 @@ replaceInQueue process queue
 main :: IO ()
 main = do
     contents <- readFile "input.txt" -- placeholder filename
-    let inputs = zipWith parseInput [0..] (lines contents)
+    let allLines = lines contents
+    let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
     putStrLn "START"
     scheduler 0 inputs []
