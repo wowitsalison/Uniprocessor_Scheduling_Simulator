@@ -41,14 +41,6 @@ scheduler seconds inputs readyQueue quanta = do
                 let (current:rest) = samePriority
                 in if cpuTime current > 0 then do
                     roundRobin quanta seconds remainingInputs samePriority others quanta
-                    {-
-                    -- FOR LOOP QUANTA TIMES HERE
-                    putStrLn $ show seconds ++ "    " ++ [charId current]
-                    threadDelay 1000000 -- Delay one second
-
-                    let updatedQueue' = updateQueue current (others ++ rest)  -- Move to end of same-priority queue
-                    scheduler (seconds + 1) remainingInputs updatedQueue' quanta
-                    -}
                 else do
                     let cleanedQueue = removeFromQueue current (others ++ rest)
                     scheduler seconds remainingInputs cleanedQueue quanta
