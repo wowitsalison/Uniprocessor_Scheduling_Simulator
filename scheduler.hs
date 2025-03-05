@@ -31,7 +31,7 @@ scheduler elapsedTime seconds inputs readyQueue quanta = do
     -- Add new arrivals to the ready queue
     let (newArrivals, remainingInputs) = span (\p -> arrival p == seconds) inputs
     let updatedQueue = readyQueue ++ newArrivals
-
+    -- Run by lowest priority
     case findLowestPriority updatedQueue of
         Just process -> 
             let minPriorityValue = priority process
@@ -47,7 +47,8 @@ scheduler elapsedTime seconds inputs readyQueue quanta = do
             else if cpuTime process > 0 then do
                 putStrLn $ show seconds ++ "    " ++ [charId process]
                 let updatedQueue' = updateQueue process updatedQueue
-                threadDelay 1000000 -- Delay one second
+                -- Delay one second
+                threadDelay 1000000 
                 scheduler (elapsedTime + 1) (seconds + 1) remainingInputs updatedQueue' quanta
             else do
                 let cleanedQueue = removeFromQueue process updatedQueue
@@ -56,23 +57,24 @@ scheduler elapsedTime seconds inputs readyQueue quanta = do
             if null remainingInputs then putStrLn "END"
             else do
                 print seconds
-                threadDelay 1000000 -- Delay one second
+                threadDelay 1000000
                 scheduler elapsedTime (seconds + 1) remainingInputs updatedQueue quanta
 
+-- Run processes with equal priorities for quanta seconds before switching
 roundRobin :: Int -> Int -> [Input] -> [Input] -> [Input] -> Int -> IO ()
 roundRobin elapsedTime seconds remainingInputs (current:rest) others quanta = do
     putStrLn $ show seconds ++ "    " ++ [charId current]
     let updatedProcess = current { cpuTime = cpuTime current - 1 }
         newElapsedTime = elapsedTime + 1
         updatedQueue' = if cpuTime updatedProcess > 0
-                        then rest ++ [updatedProcess]  -- Move to back only when switching
-                        else rest  -- Remove if finished
-
-    threadDelay 1000000  -- Delay one second
-
+                        -- Move to back only when switching
+                        then rest ++ [updatedProcess]
+                        -- Remove if finished   
+                        else rest                       
+    threadDelay 1000000
     -- Switch process if quanta is reached or process finished
     if newElapsedTime `mod` quanta == 0 || cpuTime updatedProcess == 0
-        then scheduler newElapsedTime (seconds + 1) remainingInputs (others ++ updatedQueue') quanta  -- Now with all args
+        then scheduler newElapsedTime (seconds + 1) remainingInputs (others ++ updatedQueue') quanta
         else roundRobin newElapsedTime (seconds + 1) remainingInputs (updatedProcess : rest) others quanta
 
 -- Subtract 1 from cpuTime
@@ -88,8 +90,10 @@ removeFromQueue process = filter (\p -> charId p /= charId process)
 -- Add process to back of queue or remove
 replaceInQueue :: Input -> [Input] -> [Input]
 replaceInQueue process queue
-    | cpuTime process > 0 = withoutProcess ++ [process] -- Keep if still running
-    | otherwise = withoutProcess                        -- Remove if finished
+    -- Keep if still running
+    | cpuTime process > 0 = withoutProcess ++ [process] 
+    -- Remove if finished
+    | otherwise = withoutProcess                        
   where withoutProcess = removeFromQueue process queue
 
 -- Get integer from user input for quanta
@@ -104,6 +108,6 @@ main = do
     quanta <- getQuanta
     contents <- readFile filePath
     let allLines = lines contents
-    let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
+    let inputs = zipWith parseInput [0..] (tail allLines)
     putStrLn "START"
     scheduler 0 0 inputs [] quanta
