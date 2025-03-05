@@ -26,12 +26,12 @@ findLowestPriority [] = Nothing
 findLowestPriority queue = Just (minimumBy (comparing priority) queue)
 
 -- Run one second of the scheduler
-scheduler :: Int -> [Input] -> [Input] -> Int -> IO ()
-scheduler seconds inputs readyQueue quanta = do
-    -- Add to ready queue
+scheduler :: Int -> Int -> [Input] -> [Input] -> Int -> IO ()
+scheduler elapsedTime seconds inputs readyQueue quanta = do
+    -- Add new arrivals to the ready queue
     let (newArrivals, remainingInputs) = span (\p -> arrival p == seconds) inputs
     let updatedQueue = readyQueue ++ newArrivals
-        
+
     case findLowestPriority updatedQueue of
         Just process -> 
             let minPriorityValue = priority process
@@ -39,41 +39,40 @@ scheduler seconds inputs readyQueue quanta = do
             in 
             if length samePriority > 1 then 
                 let (current:rest) = samePriority
-                in if cpuTime current > 0 then do
-                    roundRobin quanta seconds remainingInputs samePriority others quanta
+                in if cpuTime current > 0 then
+                    roundRobin elapsedTime seconds remainingInputs samePriority others quanta
                 else do
                     let cleanedQueue = removeFromQueue current (others ++ rest)
-                    scheduler seconds remainingInputs cleanedQueue quanta
+                    scheduler elapsedTime seconds remainingInputs cleanedQueue quanta
             else if cpuTime process > 0 then do
                 putStrLn $ show seconds ++ "    " ++ [charId process]
                 let updatedQueue' = updateQueue process updatedQueue
                 threadDelay 1000000 -- Delay one second
-                scheduler (seconds + 1) remainingInputs updatedQueue' quanta
+                scheduler (elapsedTime + 1) (seconds + 1) remainingInputs updatedQueue' quanta
             else do
                 let cleanedQueue = removeFromQueue process updatedQueue
-                scheduler seconds remainingInputs cleanedQueue quanta
+                scheduler elapsedTime seconds remainingInputs cleanedQueue quanta
         Nothing ->
             if null remainingInputs then putStrLn "END"
             else do
                 print seconds
                 threadDelay 1000000 -- Delay one second
-                scheduler (seconds + 1) remainingInputs updatedQueue quanta
+                scheduler elapsedTime (seconds + 1) remainingInputs updatedQueue quanta
 
 roundRobin :: Int -> Int -> [Input] -> [Input] -> [Input] -> Int -> IO ()
-roundRobin 0 seconds remainingInputs samePriority others quanta = do
-    let updatedQueue' = others ++ samePriority  -- Move to end of same-priority queue
-    scheduler (seconds + 1) remainingInputs updatedQueue' quanta
-
-roundRobin n seconds remainingInputs (current:rest) others quanta = do
+roundRobin elapsedTime seconds remainingInputs (current:rest) others quanta = do
     putStrLn $ show seconds ++ "    " ++ [charId current]
     let updatedProcess = current { cpuTime = cpuTime current - 1 }
         updatedQueue' = if cpuTime updatedProcess > 0
                         then others ++ rest ++ [updatedProcess]  -- Move to back of queue
                         else others ++ rest                      -- Remove if finished
     threadDelay 1000000  -- Delay one second
-    if n - 1 > 0 && cpuTime updatedProcess > 0
-        then roundRobin (n - 1) (seconds + 1) remainingInputs (updatedProcess : rest) others quanta
-        else scheduler (seconds + 1) remainingInputs updatedQueue' quanta
+    
+    -- Switch process every quanta seconds
+    let newElapsedTime = elapsedTime + 1
+    if newElapsedTime `mod` quanta == 0
+        then scheduler newElapsedTime (seconds + 1) remainingInputs updatedQueue' quanta  -- Switch process
+        else roundRobin newElapsedTime (seconds + 1) remainingInputs (updatedProcess : rest) others quanta
 
 -- Subtract 1 from cpuTime
 updateQueue :: Input -> [Input] -> [Input]
@@ -102,4 +101,4 @@ main = do
     let allLines = lines contents
     let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
     putStrLn "START"
-    scheduler 0 inputs [] quanta
+    scheduler 0 0 inputs [] quanta
