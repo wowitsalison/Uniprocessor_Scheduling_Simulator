@@ -98,7 +98,7 @@ main :: IO ()
 main = do
     putStrLn "Enter quanta for round robin: "
     quanta <- getQuanta
-    contents <- readFile "input.txt" -- placeholder filename
+    contents <- readFile "tests/input4.txt" -- placeholder filename
     let allLines = lines contents
     let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
     putStrLn "START"
