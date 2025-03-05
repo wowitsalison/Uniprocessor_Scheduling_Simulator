@@ -85,20 +85,24 @@ updateQueue process queue =
 removeFromQueue :: Input -> [Input] -> [Input]
 removeFromQueue process = filter (\p -> charId p /= charId process)
 
+-- Add process to back of queue or remove
 replaceInQueue :: Input -> [Input] -> [Input]
 replaceInQueue process queue
     | cpuTime process > 0 = withoutProcess ++ [process] -- Keep if still running
     | otherwise = withoutProcess                        -- Remove if finished
   where withoutProcess = removeFromQueue process queue
-            
+
+-- Get integer from user input for quanta
 getQuanta :: IO Int
 getQuanta = readLn
 
 main :: IO ()
 main = do
+    putStrLn "Please enter the path to the input file with no quotation marks:"
+    filePath <- getLine
     putStrLn "Enter quanta for round robin: "
     quanta <- getQuanta
-    contents <- readFile "tests/input.txt" -- placeholder filename
+    contents <- readFile filePath
     let allLines = lines contents
     let inputs = zipWith parseInput [0..] (tail allLines)  -- Skip the first line
     putStrLn "START"
