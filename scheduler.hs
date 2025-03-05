@@ -63,15 +63,16 @@ roundRobin :: Int -> Int -> [Input] -> [Input] -> [Input] -> Int -> IO ()
 roundRobin elapsedTime seconds remainingInputs (current:rest) others quanta = do
     putStrLn $ show seconds ++ "    " ++ [charId current]
     let updatedProcess = current { cpuTime = cpuTime current - 1 }
+        newElapsedTime = elapsedTime + 1
         updatedQueue' = if cpuTime updatedProcess > 0
-                        then others ++ rest ++ [updatedProcess]  -- Move to back of queue
-                        else others ++ rest                      -- Remove if finished
+                        then rest ++ [updatedProcess]  -- Move to back only when switching
+                        else rest  -- Remove if finished
+
     threadDelay 1000000  -- Delay one second
-    
-    -- Switch process every quanta seconds
-    let newElapsedTime = elapsedTime + 1
-    if newElapsedTime `mod` quanta == 0
-        then scheduler newElapsedTime (seconds + 1) remainingInputs updatedQueue' quanta  -- Switch process
+
+    -- Switch process if quanta is reached or process finished
+    if newElapsedTime `mod` quanta == 0 || cpuTime updatedProcess == 0
+        then scheduler newElapsedTime (seconds + 1) remainingInputs (others ++ updatedQueue') quanta  -- Now with all args
         else roundRobin newElapsedTime (seconds + 1) remainingInputs (updatedProcess : rest) others quanta
 
 -- Subtract 1 from cpuTime
